@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测量数据</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type="text/css">
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body>
+<script src="jquery-2.2.4.min.js"></script>
+<script src="highcharts.js"></script>
+<script src="value-in-legend.js"></script>
+<script src="data-formater.js"></script>
+
+<div style="height: 100%; margin: 0 auto;padding:0 5px;">
+    <div id="container" style="width:100%; height:100%"></div>
+</div>
+<script type="text/javascript">
+
+    function rnd(min, max) {
+        return Math.floor(Math.random() * (max - min) + min);
+    }
+
+    function rndDig(min, max, dig) {
+        return parseFloat((Math.random() * (max - min) + min).toFixed(dig));
+    }
+
+    function rndValue(name, min, max) {
+        var value = rndDig(min, max);
+        if (name == "尿酸") {
+            // 男性0.149—0.416mmol/L
+            // 女性0.089—0.357mmol/L
+            value = rndDig(0.001, 1, 3);
+        } else if (name == "总胆固醇") {
+            // 0.29-5.2
+            value = rndDig(0.1, 10, 2);
+        } else if (name == "血氧饱和度") {
+            // 95%—98%
+            value = rndDig(0.90, 1, 2);
+        } else if (name == "BMI值") {
+            // 18.5-24.99
+            value = rndDig(1, 40, 2);
+        } else if (name == "体温") {
+            // 0-2岁 36.4-38.0℃
+            // 3-10岁 36.1-37.8℃
+            // 11-65岁 35.9-37.6℃
+            // 65岁以上 35.8-37.5℃
+            value = rndDig(20, 50, 1);
+        } else if (name == "血红蛋白") {
+            // 男性年龄≥18 12.0-16.0g/dL
+            // 女性年龄≥18 11.0-15.0g/dL
+            // 新生儿年龄0-1 17.0-20.0g/dL
+            // 青少年年龄1＜18 11.0-16.0g/dL
+            value = rndDig(3, 30, 1);
+        }
+        return value;
+    }
+
+
+    function createTestData(type, ext, showCount) {
+        var now = new Date();
+        var dates = [];
+        var rndData = [];
+        for (var i = 0; i < showCount; i++) {
+            var cur = new Date(now - 86400000 * (showCount - 1 - i));
+            dates[i] = cur.getDate() + "日";
+            var time = (cur.getMonth() + 1) + '月' + cur.getDate() + "日 " + cur.getHours() + ":" + cur.getMinutes() + ":" + cur.getSeconds();
+            rndData[i] = {
+                'name': datdateses[i],  // x坐标显示的日期
+                'time': time,      // 顶部显示的测量时间
+                'ext': ext,        // 扩展类型,用于判断数值范围
+                'x': i,            // 序号
+                'y': rndValue(type, 0.001, 1)  // 测量值
+            };
+        }
+        if (type == "血氧饱和度") {
+            var pulseData = [];
+            for (var i = 0; i < showCount; i++) {
+                rndData[i].ext = rnd(20, 200);
+            }
+        }
+        loadChart(type, dates, rndData);
+    }
+
+    var backgroundColor = '#ECF7FC';
+    var recordLineColor = '#30B5FC';
+    var recordBackgroupColor = '#4FC9FC';
+    var gridLineColor = '#F9F9F9';
+    var yTickColor = '#CCCCCC';
+    var crosshairColor = '#61BDE3';
+
+    /**
+     * 加载数据
+     * @param typeName 数据类型名称
+     * @param dates
+     * @param recordData
+     */
+    function loadChart(typeName, dates, recordData) {
+        var config = {
+            credits: {
+                enabled: false // 不显示highcharts版权信息
+            },
+            chart: {
+                plotBackgroundColor: backgroundColor,
+                //panning: true,  // 支持拖动
+                type: 'areaspline',
+                spacing: [10, -5, 5, -5], // 控制图表和xy轴的距离
+                //margin: [10, 0, 10, 0],
+            },
+            colors: [recordLineColor],
+            title: null,
+            legend: {
+                enabled: true,
+                floating: true,
+                itemDistance: 10,
+                symbolWidth: 0,
+                //itemStyle: {cursor: 'pointer'},
+                verticalAlign: 'top',
+                align: 'center',
+                x: 0,
+                y: 10,
+                //labelFormat: '<span style="color:{color}">{name}</span> <b>{point.y}</b><br/>',
+                labelFormatter: function () {
+                    if (this.point.y == undefined) {
+                        return '<span style="color:' + this.color + '">' +
+                                this.name + '</span>'
+                    }
+                    ;
+                    return formatLegendValue(this.name, this.point.color, this.point.y, this.point.ext);
+                },
+            },
+            xAxis: {
+                tickInterval: 1,
+                gridLineColor: gridLineColor,
+                gridLineWidth: 1,
+                labels: {
+                    step: 1,
+                    formatter: function () {
+                        return formatDate(dates.length, this.value, dates[this.value]);
+                    }
+                },
+                crosshair: {
+                    dashStyle: 'ShortDash',
+                    color: crosshairColor,
+                    zIndex: 1,
+                },
+                //categories: dates,
+                tickWidth: 0,
+                lineColor: '#FFFFFF',
+            },
+            yAxis: {
+                title: null,
+                offset: -8,
+                zIndex: -1,
+                //tickInterval: 40,
+                gridLineColor: gridLineColor,
+                gridLineWidth: 0,
+                labels: {
+                    style: {
+                        color: yTickColor,
+                    },
+                }
+            },
+            tooltip: {
+                enabled: true,
+                borderRadius: 8,
+                //crosshairs: true,
+                //shared: true,
+            },
+            plotOptions: {
+                areaspline: {
+                    dataLabels: {
+                        enabled: getUrlParam("dl") != undefined,
+                        formatter: function () {
+                            return formatValue(this.series.name, this.series.color, this.y, this.ext);
+                        }
+                    },
+                    states: {
+                        hover: {
+                            lineWidth: 1,
+                        }
+                    },
+                    marker: {
+                        enabled: true,
+                        symbol: 'circle',
+                        lineWidth: 1,
+                        radius: 3,
+                        zIndex: 999999,
+                        states: {
+                            hover: {
+                                enabled: true,
+                                lineWidth: 1,
+                                zIndex: 999999,
+                            }
+                        }
+                    },
+                },
+                series: {
+                    events: {
+                        legendItemClick: function () {
+                            return false;
+                        },
+                    },
+                    point: {
+                        events: {
+                            mouseOver: function () {
+                                var chart = this.series.chart;
+                                if (!chart.lbl) {
+                                    chart.lbl = chart.renderer.label('', document.documentElement.clientWidth / 2 - 85, 2)
+                                            .attr({
+                                                padding: 10,
+                                                r: 0,
+                                                zIndex: 9,
+                                            })
+                                            .css({
+                                                color: '#000000',
+                                            })
+                                            .add();
+                                }
+                                chart.lbl
+                                        .show()
+                                        .attr({
+                                            text: this.time + " 测量"
+                                        });
+                            },
+                        }
+                    },
+                },
+            },
+        };
+        config.series = [{
+            name: typeName,
+            data: recordData,
+            zIndex: 99,
+            lineWidth: 1,
+            lineColor: recordLineColor,
+            marker: {
+                fillColor: recordBackgroupColor,
+                lineColor: recordLineColor,
+            },
+            tooltip: {
+                headerFormat: '<b>{point.key}</b><br/>',
+                pointFormat: '{series.name}：<b>{point.y:.0f}</b><br/>'
+            },
+            fillColor: {
+                linearGradient: {
+                    x1: 0,
+                    y1: 0,
+                    x2: 0,
+                    y2: 1
+                },
+                stops: [
+                    [0, recordBackgroupColor],
+                    [1, Highcharts.Color(recordBackgroupColor).setOpacity(0).get('rgba')]
+                ]
+            },
+        }];
+        if(typeName == "血氧饱和度"){
+            config.yAxis.max = 1;
+            config.yAxis.labels.formatter = function () {
+                return formatBo(this.value);
+            };
+        }
+        $('#container').highcharts(config, function (chart) {
+            //console.debug(chart.tooltip.refresh([chart.series[0].data[0]]));
+        });
+    }
+
+    //获取url中的参数
+    function getUrlParam(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)"); //构造一个含有目标参数的正则表达式对象
+        var r = window.location.search.substr(1).match(reg);  //匹配目标参数
+        if (r != null) return decodeURI(r[2]);
+        return null; //返回参数值
+    }
+
+    $(function () {
+        var show = getUrlParam("show");
+        var type = getUrlParam("type");
+        var ext = getUrlParam("ext");
+        if (type != undefined && show != undefined) {
+            createTestData(type, ext, show);
+        }
+        //realDataTest();
+    });
+
+</script>
+</body>
+</html>
